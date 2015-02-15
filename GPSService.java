@@ -22,6 +22,9 @@ public class GPSService extends Service {
     public Location loc;
     public boolean locAvail = false;
     public String macaddress;
+    public Thread triggerService;
+    public LocationManager lm;
+    public MyLocationListener MyLocationListener;
     public GPSService() {
 
     }
@@ -31,10 +34,13 @@ public class GPSService extends Service {
         return null;
     }
 
-    public void onDestroy(Intent intent){
+    public void onDestroy(){
         Log.d("Tracker", "GPS Service stopped.");
         running = false;
-        stopSelf();
+        locAvail = false;
+        lm.removeUpdates(MyLocationListener);
+        lm = null;
+
     }
 
     public void onStart(Intent intent, int startId) {
@@ -46,18 +52,18 @@ public class GPSService extends Service {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                // TODO Auto-generated method stub
                 while (true) {
                     try {
                         Thread.sleep(10000);
                         mHandler.post(new Runnable() {
-
                             @Override
                             public void run() {
-                                if(locAvail){
-                                    updateLocation(loc);
-                                    Log.d("Tracker", "Sending out location.");
-                                    locAvail=false;
+                                if(running) {
+                                    if (locAvail) {
+                                        updateLocation(loc);
+                                        Log.d("Tracker", "Sending out location.");
+                                        locAvail = false;
+                                    }
                                 }
                             }
                         });
@@ -71,18 +77,18 @@ public class GPSService extends Service {
 
     private void addLocationListener()
     {
-        Thread triggerService = new Thread(new Runnable(){
+        triggerService = new Thread(new Runnable(){
             public void run(){
                 try{
                     Looper.prepare();//Initialise the current thread as a looper.
-                    LocationManager lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+                    lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 
                     Criteria c = new Criteria();
                     c.setAccuracy(Criteria.ACCURACY_COARSE);
 
                     final String PROVIDER = lm.getBestProvider(c, true);
 
-                    MyLocationListener MyLocationListener = new MyLocationListener();
+                    MyLocationListener = new MyLocationListener();
                     lm.requestLocationUpdates(PROVIDER, 600000, 0, MyLocationListener);
                     Log.d("Tracker", "GPS Service running.");
                     Looper.loop();
@@ -147,4 +153,3 @@ public class GPSService extends Service {
 
 
 }
-
