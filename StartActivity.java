@@ -3,29 +3,32 @@ package daandesign.gpstracker;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ToggleButton;
 
 
 public class StartActivity extends ActionBarActivity {
     private static Context context;
+    public Intent i;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
         ToggleButton tb = (ToggleButton) findViewById(R.id.toggleButtonTrack);
-        if(isMyServiceRunning(TrackingService.class)){
+        if(isMyServiceRunning(GPSService.class)){
             tb.setChecked(true);
         } else {
             tb.setChecked(false);
         }
         StartActivity.context=getApplicationContext();
+        i= new Intent(this, GPSService.class);
     }
 
     public static Context getAppContext() {
@@ -55,7 +58,7 @@ public class StartActivity extends ActionBarActivity {
     }
 
     public void goToGoogleMaps(View v){
-        Log.d("log", "Were going to Gg");
+        Log.d("Tracker", "Showing Google Maps screen.");
         Intent intent = new Intent(this, Main.class);
     }
 
@@ -70,10 +73,16 @@ public class StartActivity extends ActionBarActivity {
     }
 
     public void startTracking(View v){
-        Intent i= new Intent(this, TrackingService.class);
-        if(isMyServiceRunning(TrackingService.class)){
+        Log.d("Tracker", "Toggling the tracking.");
+        WifiManager manager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        WifiInfo info = manager.getConnectionInfo();
+        String address = info.getMacAddress();
+        i.putExtra("mac", address);
+        if(isMyServiceRunning(GPSService.class)){
+            Log.d("Tracker", "Stopping the GPS service.");
             this.stopService(i);
         } else {
+            Log.d("Tracker", "Starting the GPS service.");
             this.startService(i);
         }
     }
