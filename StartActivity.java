@@ -3,6 +3,7 @@ package daandesign.gpstracker;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.media.audiofx.BassBoost;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.support.v7.app.ActionBarActivity;
@@ -60,6 +61,13 @@ public class StartActivity extends ActionBarActivity {
     public void goToGoogleMaps(View v){
         Log.d("Tracker", "Showing Google Maps screen.");
         Intent intent = new Intent(this, Main.class);
+        this.startActivity(intent);
+    }
+
+    public void goToSettings(View v){
+        Log.d("Tracker", "Showing Settings screen.");
+        Intent intent = new Intent(this, SettingsActivity.class);
+        this.startActivity(intent);
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {

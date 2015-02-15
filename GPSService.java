@@ -3,6 +3,7 @@ package daandesign.gpstracker;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -11,17 +12,17 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.util.Log;
-
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class GPSService extends Service {
     public boolean running = true;
+    public boolean locked = false;
     public Location loc;
     public boolean locAvail = false;
     public String macaddress;
+    public Integer syncfreq;
+    public Integer syncfreqlim = 5;
     public Thread triggerService;
     public LocationManager lm;
     public MyLocationListener MyLocationListener;
@@ -38,32 +39,43 @@ public class GPSService extends Service {
         Log.d("Tracker", "GPS Service stopped.");
         running = false;
         locAvail = false;
-        lm.removeUpdates(MyLocationListener);
-        lm = null;
-
+        if(!(lm==null)) {
+            lm.removeUpdates(MyLocationListener);
+            lm = null;
+        }
     }
 
     public void onStart(Intent intent, int startId) {
         super.onStart(intent, startId);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        syncfreq = Integer.parseInt(prefs.getString("sync_frequency", "60"));
+        Log.d("debug", Integer.toString(syncfreq));
+        Log.d("debug", prefs.getString("sync_frequency", "60"));
         macaddress = intent.getStringExtra("mac");
-        addLocationListener();
+        if(syncfreq<syncfreqlim){
+            addLocationListener();
+        }
         final Handler mHandler = new Handler();
-
+        //Log.d("Tracker", "Hello.");
+        sendLoc();
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
                     try {
-                        Thread.sleep(10000);
+                        Thread.sleep(syncfreq*60000);
                         mHandler.post(new Runnable() {
                             @Override
                             public void run() {
                                 if(running) {
-                                    if (locAvail) {
-                                        updateLocation(loc);
-                                        Log.d("Tracker", "Sending out location.");
-                                        locAvail = false;
+                                    while (locked) {
+                                        try {
+                                            Thread.sleep(1000);
+                                        } catch (Exception e) {
+                                            // TODO: handle exception
+                                        }
                                     }
+                                    sendLoc();
                                 }
                             }
                         });
@@ -73,6 +85,34 @@ public class GPSService extends Service {
                 }
             }
         }).start();
+    }
+
+    public void sendLoc(){
+        locked = true;
+        if(!(syncfreq<syncfreqlim)){
+            addLocationListener();
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!locAvail) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (Exception e) {
+                        // TODO: handle exception
+                    }
+                }
+                updateLocation(loc);
+                Log.d("Tracker", "Sending out location.");
+                locAvail = false;
+                if(!(syncfreq<syncfreqlim)){
+                    lm.removeUpdates(MyLocationListener);
+                    lm = null;
+                }
+                locked = false;
+            }
+        }).start();
+
     }
 
     private void addLocationListener()
